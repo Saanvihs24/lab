@@ -1,0 +1,78 @@
+# ------------------ Weather and Air Quality Data Collection Script ------------------
+import requests
+import csv
+from datetime import datetime
+import json
+bengaluru_locations = [
+{"name": "City Center", "latitude": 12.9716, "longitude": 77.5946},
+{"name": "Whitefield", "latitude": 12.9698, "longitude": 77.7500},
+{"name": "Electronic City", "latitude": 12.8409, "longitude": 77.6749},
+{"name": "Jayanagar", "latitude": 12.9244, "longitude": 77.5830},
+{"name": "Yeshwanthpur", "latitude": 13.0242, "longitude": 77.5516},
+]
+def collect_bengaluru_weather_data():
+api_url = "https://api.open-meteo.com/v1/forecast"
+all_weather_data = []
+for location in bengaluru_locations:
+params = {
+"latitude": location["latitude"],
+"longitude": location["longitude"],
+"hourly": ["temperature_2m", "relative_humidity_2m"],
+"timezone": "Asia/Kolkata",
+"past_days": 21
+}
+try:
+response = requests.get(api_url, params=params)
+response.raise_for_status()
+data = response.json()
+hourly_data = data['hourly']
+for i in range(len(hourly_data['time'])):
+all_weather_data.append({
+'location': location['name'],
+'timestamp': hourly_data['time'][i],
+'temperature_c': hourly_data['temperature_2m'][i],
+'relative_humidity_percent': hourly_data['relative_humidity_2m'][i]
+})
+except requests.exceptions.RequestException as e:
+print(f"Error fetching data for {location['name']}: {e}")
+return all_weather_data
+def collect_bengaluru_air_quality_data():
+api_url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+all_air_quality_data = []
+for location in bengaluru_locations:
+params = {
+"latitude": location["latitude"],
+"longitude": location["longitude"],
+"hourly": ["pm10", "pm2_5", "carbon_monoxide"],
+"timezone": "Asia/Kolkata",
+"past_days": 30
+}
+try:
+response = requests.get(api_url, params=params)
+response.raise_for_status()
+data = response.json()
+hourly_data = data['hourly']
+for i in range(len(hourly_data['time'])):
+all_air_quality_data.append({
+'location': location['name'],
+'timestamp': hourly_data['time'][i],
+'pm10_ug_m3': hourly_data['pm10'][i],
+'pm2_5_ug_m3': hourly_data['pm2_5'][i],
+'carbon_monoxide_ug_m3': hourly_data['carbon_monoxide'][i]
+})
+except requests.exceptions.RequestException as e:
+print(f"Error fetching data for {location['name']}: {e}")
+return all_air_quality_data
+def save_to_csv(data, filename):
+if not data:
+return
+keys = data[0].keys()
+with open(filename, 'w', newline='', encoding='utf-8') as output_file:
+dict_writer = csv.DictWriter(output_file, fieldnames=keys)
+dict_writer.writeheader()
+dict_writer.writerows(data)
+if __name__ == "__main__":
+weather_data = collect_bengaluru_weather_data()
+save_to_csv(weather_data, 'bengaluru_weather.csv')
+air_quality_data = collect_bengaluru_air_quality_data()
+save_to_csv(air_quality_data, 'bengaluru_air_quality.csv')
