@@ -1,0 +1,35 @@
+from bs4 import BeautifulSoup
+def scrape_books_from_website():
+base_url = "http://books.toscrape.com/catalogue/"
+next_page_url = "page-1.html"
+all_scraped_books = []
+while next_page_url:
+current_url = requests.compat.urljoin(base_url, next_page_url)
+try:
+response = requests.get(current_url)
+response.raise_for_status()
+soup = BeautifulSoup(response.text, 'html.parser')
+book_articles = soup.find_all('article', class_='product_pod')
+for book in book_articles:
+title = book.h3.a['title']
+price_str = book.find('p', class_='price_color').text
+price = float(price_str.replace('Â£', '').strip())
+rating_class = book.find('p', class_='star-rating')['class'][1]
+rating = rating_class
+all_scraped_books.append({
+'title': title,
+'price': price,
+'rating': rating
+})
+next_button = soup.find('li', class_='next')
+if next_button:
+next_page_url = next_button.a['href']
+else:
+next_page_url = None
+except requests.exceptions.RequestException as e:
+print(f"Error fetching data from website: {e}")
+return None
+return all_scraped_books
+if __name__ == "__main__":
+books_data = scrape_books_from_website()
+save_to_csv(books_data, 'books_data.csv')
